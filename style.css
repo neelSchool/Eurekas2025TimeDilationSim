@@ -1,10 +1,19 @@
 body {
   margin: 0;
   overflow: hidden;
-  background: black;
+  background: #000;
   font-family: sans-serif;
 }
 
 canvas {
   display: block;
+}
+
+#gui-container {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+  font-family: Arial, sans-serif;
+  color: white;
 }
