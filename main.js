@@ -1,137 +1,91 @@
-import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+const canvas = document.getElementById('spacetimeCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Scene Setup
-const scene = new THREE.Scene();
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+// Setup observers and planets
+const planets = [];
+const observers = [
+  { x: canvas.width / 4, y: canvas.height / 2, clock: 0 },
+  { x: (3 * canvas.width) / 4, y: canvas.height / 2, clock: 0 }
+];
 
-// Observer Setup
-const observer1Camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const observer2Camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-observer1Camera.position.set(0, 0, 5);
-observer2Camera.position.set(5, 0, 5);
+// Gravitational lensing effect
+function drawLens(x, y, radius, intensity) {
+  const gradient = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
+  gradient.addColorStop(0, `rgba(255, 255, 255, ${intensity})`);
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
 
-// Observer Clocks
-const observer1Clock = { time: 0, speed: 1 };
-const observer2Clock = { time: 0, speed: 0.9 };
-
-// UI Controls
-const controlsDiv = document.getElementById('controls');
-
-// Observer Switch
-const observerSwitch = document.createElement('button');
-observerSwitch.innerText = "Switch Observer";
-controlsDiv.appendChild(observerSwitch);
-
-let activeCamera = observer1Camera;
-observerSwitch.addEventListener('click', () => {
-  activeCamera = (activeCamera === observer1Camera) ? observer2Camera : observer1Camera;
-});
-
-// Sliders for Dynamic Adjustment
-const curvatureSlider = document.createElement('input');
-curvatureSlider.type = "range";
-curvatureSlider.min = 0.1;
-curvatureSlider.max = 2;
-curvatureSlider.step = 0.1;
-curvatureSlider.value = 0.2;
-controlsDiv.appendChild(curvatureSlider);
-
-const massSlider = document.createElement('input');
-massSlider.type = "range";
-massSlider.min = 0.5;
-massSlider.max = 5;
-massSlider.step = 0.1;
-massSlider.value = 1.0;
-controlsDiv.appendChild(massSlider);
-
-// Spacetime Sphere
-const geometry = new THREE.SphereGeometry(1, 64, 64);
-const shaderMaterial = new THREE.ShaderMaterial({
-  uniforms: {
-    time: { value: 0 },
-    curvatureIntensity: { value: parseFloat(curvatureSlider.value) },
-    mass: { value: parseFloat(massSlider.value) },
-  },
-  vertexShader: `
-    varying vec3 vPosition;
-    void main() {
-      vPosition = position;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform float curvatureIntensity;
-    uniform float mass;
-    varying vec3 vPosition;
-    void main() {
-      float distance = length(vPosition);
-      float gravitationalEffect = mass / (distance * distance);
-      float curvature = curvatureIntensity * gravitationalEffect;
-      gl_FragColor = vec4(curvature, curvature, curvature, 1.0);
-    }
-  `
-});
-const spacetimeSphere = new THREE.Mesh(geometry, shaderMaterial);
-scene.add(spacetimeSphere);
-
-// Event Listeners for Sliders
-curvatureSlider.addEventListener('input', () => {
-  shaderMaterial.uniforms.curvatureIntensity.value = parseFloat(curvatureSlider.value);
-});
-
-massSlider.addEventListener('input', () => {
-  shaderMaterial.uniforms.mass.value = parseFloat(massSlider.value);
-});
-
-// Gravitational Lens Effect
-function createGravitationalLensingEffect(mass, position) {
-  const lensGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-  const lensShaderMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      mass: { value: mass },
-      lensPosition: { value: position },
-    },
-    vertexShader: `
-      varying vec3 vPosition;
-      void main() {
-        vPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform float mass;
-      uniform vec3 lensPosition;
-      varying vec3 vPosition;
-      void main() {
-        vec3 offset = vPosition - lensPosition;
-        float lensingEffect = mass / length(offset);
-        gl_FragColor = vec4(lensingEffect, lensingEffect, lensingEffect, 1.0);
-      }
-    `
+// Add a new planet
+function addPlanet() {
+  planets.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    radius: Math.random() * 30 + 10,
+    dx: (Math.random() - 0.5) * 2,
+    dy: (Math.random() - 0.5) * 2
   });
-  const lens = new THREE.Mesh(lensGeometry, lensShaderMaterial);
-  scene.add(lens);
 }
 
-// Add Gravitational Lens Effect for Massive Object
-createGravitationalLensingEffect(2.0, new THREE.Vector3(0, 0, 0));
+// Draw the simulation
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-// Animation Loop
+  // Draw planets
+  planets.forEach((planet) => {
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Update planet positions (simple motion simulation)
+    planet.x += planet.dx;
+    planet.y += planet.dy;
+
+    // Wrap around edges
+    if (planet.x < 0) planet.x = canvas.width;
+    if (planet.x > canvas.width) planet.x = 0;
+    if (planet.y < 0) planet.y = canvas.height;
+    if (planet.y > canvas.height) planet.y = 0;
+
+    // Gravitational lensing effect
+    drawLens(planet.x, planet.y, planet.radius * 2, 0.5);
+  });
+
+  // Draw observers and clocks
+  observers.forEach((observer, index) => {
+    ctx.fillStyle = index === 0 ? 'blue' : 'red';
+    ctx.beginPath();
+    ctx.arc(observer.x, observer.y, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Clock display
+    ctx.fillStyle = 'white';
+    ctx.font = '16px Arial';
+    ctx.fillText(`Clock: ${observer.clock.toFixed(2)}`, observer.x - 30, observer.y - 15);
+  });
+}
+
+// Animation loop
+let lastTime = 0;
 function animate(time) {
+  const deltaTime = (time - lastTime) / 1000; // In seconds
+  lastTime = time;
+
+  // Update clocks (simulate relativistic time dilation)
+  observers[0].clock += deltaTime;
+  observers[1].clock += deltaTime * 0.9; // Observer 2 experiences slower time
+
+  draw();
   requestAnimationFrame(animate);
-
-  // Update Spacetime Visualization
-  shaderMaterial.uniforms.time.value = time * 0.001;
-
-  // Update Observer Clocks
-  observer1Clock.time += 0.01 * observer1Clock.speed;
-  observer2Clock.time += 0.01 * observer2Clock.speed;
-
-  console.log(`Observer 1 Clock: ${observer1Clock.time.toFixed(2)} | Observer 2 Clock: ${observer2Clock.time.toFixed(2)}`);
-
-  // Render Scene
-  renderer.render(scene, activeCamera);
 }
-animate();
+
+// Event Listeners
+document.getElementById('addPlanet').addEventListener('click', addPlanet);
+
+animate(0);
