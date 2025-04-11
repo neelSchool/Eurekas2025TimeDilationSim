@@ -1,8 +1,8 @@
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-const SPEED_OF_LIGHT = 300;
-const G = 6.674e-11;
+const SPEED_OF_LIGHT = 300; // Scaled for simulation
+const G = 6.674e-11; // Gravitational constant
 
 const traveler = {
   x: 100,
@@ -10,6 +10,7 @@ const traveler = {
   vx: 0,
   vy: 0,
   radius: 10,
+  angle: 0,
   properTime: 0
 };
 
@@ -28,6 +29,7 @@ const quotes = [
   "Your now may not be my now."
 ];
 
+// Helper functions
 function getDistance(a, b) {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 }
@@ -45,6 +47,20 @@ function drawCircle(x, y, radius, color) {
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, 2 * Math.PI);
   ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawSpaceship(x, y, angle, size = 20) {
+  const dx = size * Math.cos(angle);
+  const dy = size * Math.sin(angle);
+  
+  ctx.beginPath();
+  ctx.moveTo(x + dx, y + dy);
+  ctx.lineTo(x - dx, y - dy);
+  ctx.lineTo(x + size * Math.cos(angle + Math.PI / 2), y + size * Math.sin(angle + Math.PI / 2));
+  ctx.closePath();
+  
+  ctx.fillStyle = "cyan";
   ctx.fill();
 }
 
@@ -97,9 +113,10 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   handleInput(dt);
 
-  // Update traveler
+  // Update traveler position
   traveler.x += traveler.vx * dt;
   traveler.y += traveler.vy * dt;
 
@@ -124,8 +141,12 @@ function loop(timestamp) {
     drawCircle(p.x, p.y, p.radius, "yellow");
   }
 
-  // Draw traveler
-  drawClock(traveler.x, traveler.y, traveler.radius, clockAngle, "cyan");
+  // Draw spaceship
+  drawSpaceship(traveler.x, traveler.y, clockAngle);
+
+  // Draw clocks
+  drawClock(150, 30, 20, clockAngle, "white"); // Observer clock (stationary)
+  drawClock(750, 30, 20, clockAngle * velDilation, "cyan"); // Traveler's clock
 
   // Display info
   ctx.font = "16px monospace";
@@ -145,6 +166,10 @@ function loop(timestamp) {
     quoteTimer = 0;
   }
   drawText(`“${currentQuote}”`, 20, canvas.height - 30);
+
+  // User prompts
+  drawText("Use arrow keys to move the spaceship!", 20, canvas.height - 50);
+  drawText("Click to add new planets.", 20, canvas.height - 70);
 
   requestAnimationFrame(loop);
 }
